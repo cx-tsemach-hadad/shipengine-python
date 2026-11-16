@@ -1,0 +1,22 @@
+name: SCA benchmark build and test
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned dependencies
+        run: |
+          echo 'setuptools<70' > /tmp/build-constraints.txt
+          python -m pip install uv
+          uv pip install --system --build-constraint /tmp/build-constraints.txt -r requirements.txt pytest responses
+      - name: Compile tracked Python source
+        run: python -c "import subprocess; [compile(subprocess.check_output(['git','show','HEAD:'+p]),p,'exec') for p in subprocess.check_output(['git','ls-files','*.py'],text=True).splitlines()]"
+      - name: Unit tests
+        run: python -m pytest -q tests
